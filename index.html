@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kwacha Envelopes</title>
+<meta name="description" content="Personal envelope budget in Kwacha for Airtel Money, MTN MoMo, banks and cash.">
+<meta name="theme-color" content="#ececee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0c0d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kwacha">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css?v=5">
+<link rel="stylesheet" href="/features.css?v=5">
+<script>try{if(localStorage.getItem("ke-pin"))document.documentElement.classList.add("locked")}catch(e){}</script>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <button class="avatar" id="avatarBtn" aria-label="Go to home"><img src="/icons/icon-192.png" alt=""></button>
+    <div class="top-title"><span id="pageTitle">Home</span></div>
+    <div class="top-actions">
+      <button class="round" id="smsTop" aria-label="Paste an SMS"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"/><path d="M8 10h8M8 13h5"/></svg></button>
+      <button class="round" id="openSettings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="badge" id="exBadge" hidden></span></button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section id="v-home" class="view"></section>
+  <section id="v-envelopes" class="view" hidden></section>
+  <section id="v-insights" class="view" hidden></section>
+  <section id="v-activity" class="view" hidden></section>
+  <section id="v-accounts" class="view" hidden></section>
+</main>
+
+<nav class="dock" aria-label="Main">
+  <a href="#home" data-v="home" class="dock-btn"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a href="#envelopes" data-v="envelopes" class="dock-btn"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7.5 9 6 9-6"/></svg><span>Budget</span></a>
+  <a href="#insights" data-v="insights" class="dock-btn"><svg viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg><span>Insights</span></a>
+  <a href="#activity" data-v="activity" class="dock-btn"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Activity</span></a>
+  <a href="#accounts" data-v="accounts" class="dock-btn"><svg viewBox="0 0 24 24"><path d="M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3v3a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V6"/></svg><span>Wallet</span></a>
+</nav>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<div class="sheet" id="txSheet" role="dialog" aria-modal="true" aria-labelledby="txTitle" hidden>
+  <div class="grab"></div>
+  <form class="sheet-in" id="txForm" novalidate>
+    <div class="sheet-head">
+      <h2 id="txTitle">New transaction</h2>
+      <button type="button" class="pill-link" id="smsToggle">Paste SMS</button>
+    </div>
+    <div class="sms" id="smsBox" hidden>
+      <textarea id="smsText" rows="3" placeholder="Paste an Airtel Money, MTN MoMo or bank SMS"></textarea>
+      <div class="sms-row"><span class="hint" id="smsHint">Copy the SMS in your messages app, then paste it here.</span><button type="button" class="btn small" id="smsParse">Fill in</button></div>
+    </div>
+    <div class="seg" id="kindSeg" role="group" aria-label="Type">
+      <button type="button" data-k="out" aria-pressed="true">Spent</button>
+      <button type="button" data-k="in" aria-pressed="false">Received</button>
+    </div>
+    <label class="amount-field"><span class="cur">K</span><input id="fAmt" inputmode="decimal" placeholder="0.00" autocomplete="off" aria-label="Amount in Kwacha"></label>
+    <div class="field" id="envField">
+      <span class="label">Envelope</span>
+      <div class="chips" id="envChips"></div>
+    </div>
+    <div class="field">
+      <span class="label">Wallet</span>
+      <div class="chips" id="acctChips"></div>
+    </div>
+    <div class="two">
+      <label class="field"><span class="label">Date</span><input id="fDate" type="date"></label>
+      <label class="field"><span class="label">Fee charged (K)</span><input id="fFee" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+    </div>
+    <label class="field"><span class="label">Note</span><input id="fNote" placeholder="Shoprite, rent…" autocomplete="off"></label>
+    <p class="err" id="txErr"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="txDel" hidden>Delete</button>
+      <button type="button" class="btn plain" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="envSheet" role="dialog" aria-modal="true" aria-labelledby="envTitle" hidden>
+  <div class="grab"></div>
+  <form class="sheet-in" id="envForm" novalidate>
+    <div class="sheet-head"><h2 id="envTitle">Envelope</h2></div>
+    <div class="env-summary" id="envSummary"></div>
+    <label class="field"><span class="label">Name</span><input id="eName" placeholder="Groceries" autocomplete="off"></label>
+    <label class="field"><span class="label" id="eAmtLbl">Monthly limit</span><span class="amount-field slim"><span class="cur">K</span><input id="eAmt" inputmode="decimal" placeholder="0.00" autocomplete="off"></span></label>
+    <label class="switch-row" for="eRoll"><span><b>Roll over leftover money</b><small>Unspent money carries into next month. Overspending is taken off next month.</small></span><input type="checkbox" id="eRoll" class="switch"></label>
+    <div class="env-tx" id="envTx"></div>
+    <p class="err" id="envErr"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="eDel" hidden>Delete</button>
+      <button type="button" class="btn plain" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="billSheet" role="dialog" aria-modal="true" aria-labelledby="billTitle" hidden>
+  <div class="grab"></div>
+  <form class="sheet-in" id="billForm" novalidate>
+    <div class="sheet-head"><h2 id="billTitle">Recurring bill</h2></div>
+    <label class="field"><span class="label">Name</span><input id="bName" placeholder="ZESCO, rent, DStv…" autocomplete="off"></label>
+    <div class="two">
+      <label class="field"><span class="label">Amount (K)</span><input id="bAmt" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+      <label class="field"><span class="label">Due day of month</span><input id="bDay" inputmode="numeric" placeholder="1–31" autocomplete="off"></label>
+    </div>
+    <div class="field"><span class="label">Envelope</span><div class="chips" id="bEnvChips"></div></div>
+    <div class="field"><span class="label">Usually paid from</span><div class="chips" id="bAcctChips"></div></div>
+    <button type="button" class="go tile" id="bCal">Add reminder to my calendar <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></button>
+    <p class="err" id="billErr"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="bDel" hidden>Delete</button>
+      <button type="button" class="btn plain" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="goalSheet" role="dialog" aria-modal="true" aria-labelledby="goalTitle" hidden>
+  <div class="grab"></div>
+  <form class="sheet-in" id="goalForm" novalidate>
+    <div class="sheet-head"><h2 id="goalTitle">Savings goal</h2></div>
+    <div id="goalProgress"></div>
+    <div class="add-money" id="goalAddRow" hidden>
+      <span class="amount-field slim"><span class="cur">K</span><input id="gAdd" inputmode="decimal" placeholder="0.00" autocomplete="off" aria-label="Amount to add or take out"></span>
+      <button type="button" class="btn small" id="gPlus">Add</button>
+      <button type="button" class="btn small ghost" id="gMinus">Take out</button>
+    </div>
+    <label class="field"><span class="label">Name</span><input id="gName" placeholder="Laptop, emergency fund…" autocomplete="off"></label>
+    <div class="two">
+      <label class="field"><span class="label">Target (K)</span><input id="gTarget" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+      <label class="field"><span class="label">Reach by</span><input id="gBy" type="month"></label>
+    </div>
+    <label class="field" id="gStartWrap"><span class="label">Already saved (K)</span><input id="gStart" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+    <div class="env-tx" id="goalLog"></div>
+    <p class="err" id="goalErr"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="gDel" hidden>Delete</button>
+      <button type="button" class="btn plain" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
+  <div class="grab"></div>
+  <div class="sheet-in">
+    <div class="sheet-head"><h2 id="setTitle">Settings</h2></div>
+    <div class="field">
+      <span class="label">Appearance</span>
+      <div class="seg" id="themeSeg">
+        <button type="button" data-t="system">System</button>
+        <button type="button" data-t="light">Light</button>
+        <button type="button" data-t="dark">Dark</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Security</span>
+      <div class="set-group">
+        <button class="set-row" id="pinRow"><span id="pinRowT">Turn on app lock</span><small id="pinRowS">Ask for a 4-digit PIN when the app opens</small></button>
+        <label class="set-row switch-row" for="bioSw" id="bioRow" hidden><span><b>Unlock with fingerprint or face</b><small>Uses your phone's own unlock</small></span><input type="checkbox" id="bioSw" class="switch"></label>
+        <button class="set-row danger" id="pinOff" hidden><span>Turn off app lock</span><small>The app opens without a PIN</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Reminders</span>
+      <div class="set-group">
+        <button class="set-row" id="notifRow"><span id="notifT">Allow bill reminders</span><small id="notifS">Shows a notification when a bill is due within 2 days and you open the app</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Data</span>
+      <div class="set-group">
+        <button class="set-row" id="installRow" hidden><span>Install on this phone</span><small>Adds Kwacha to your home screen</small></button>
+        <div class="set-row static" id="iosRow" hidden><span>Install on iPhone</span><small>Tap Share, then “Add to Home Screen”</small></div>
+        <button class="set-row" id="backupBtn"><span>Back up data</span><small>Saves a file with all envelopes, bills, goals and transactions</small></button>
+        <label class="set-row" for="restoreFile"><span>Restore from backup</span><small>Replaces what's on this phone</small></label>
+        <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+        <button class="set-row" id="clearExBtn"><span>Clear example data</span><small>Removes the sample transactions, bills, goal and amounts</small></button>
+        <button class="set-row danger" id="resetBtn"><span>Erase everything</span><small>Deletes all data on this phone</small></button>
+      </div>
+    </div>
+    <p class="hint" id="setMsg">Your budget is stored on this phone only. Back it up now and then.</p>
+    <div class="actions"><button type="button" class="btn plain" data-close>Done</button></div>
+  </div>
+</div>
+
+<div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle" hidden>
+  <div class="lock-in">
+    <img class="lock-logo" src="/icons/icon-192.png" alt="">
+    <h2 id="lockTitle">Enter your PIN</h2>
+    <p class="lock-msg" id="lockMsg">Kwacha Envelopes is locked</p>
+    <div class="dots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+    <div class="keypad" id="keypad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k="bio" id="bioKey" aria-label="Unlock with fingerprint or face"><svg viewBox="0 0 24 24"><path d="M12 11v3M8.5 7.5A5 5 0 0 1 17 11v1M7 11a5 5 0 0 1 .3-1.7M7 14c0 2.5 1 4.7 2.5 6.3M17 15c0 1.8-.3 3.4-1 4.8M12 17v3M4 9.5a9 9 0 0 1 15-4.5M20 9.5c.6 1.4 1 3 1 4.5"/></svg></button>
+      <button data-k="0">0</button>
+      <button data-k="del" aria-label="Delete"><svg viewBox="0 0 24 24"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m16 9-5 6M11 9l5 6"/></svg></button>
+    </div>
+    <div class="lock-foot">
+      <button class="link-btn" id="lockCancel" hidden>Cancel</button>
+      <button class="link-btn" id="lockForgot">Forgot PIN?</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/app.js?v=5"></script>
+</body>
+</html>
