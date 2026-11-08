@@ -143,6 +143,9 @@
   const hasExamples = () => db.envs.some(e => e.example) || db.txs.some(t => t.example) || db.bills.some(b => b.example) || db.goals.some(g => g.example);
   const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.created || 0) - (a.created || 0);
   const fee = t => t.fee || 0;
+  /** Last 9 digits of a Zambian number, so 0971…, 971… and +260 971… all match. */
+  const last9 = s => String(s).replace(/\D/g, "").slice(-9);
+  const parseNums = s => [...new Set(String(s || "").split(/[,;\n]+/).map(last9).filter(n => n.length === 9))];
 
   function budgetFor(e, m){
     if (m < (e.since || m)) return 0;
@@ -626,6 +629,7 @@
     $("eAmtLbl").textContent = e ? `Monthly limit from ${monthName(ui.month)}` : "Monthly limit";
     $("eName").value = e ? e.name : ""; $("eAmt").value = e ? (budgetFor(e, ui.month) / 100).toFixed(2) : "";
     $("eRoll").checked = e ? !!e.rollover : false;
+    $("eNums").value = e && e.numbers ? e.numbers.map(n => "0" + n).join(", ") : "";
     $("eDel").hidden = !e; disarm($("eDel"), "Delete"); $("envErr").textContent = "";
     const T = totals();
     if (e) {
@@ -650,12 +654,15 @@
     if (!name) { $("envErr").textContent = "Give the envelope a name."; return; }
     if (!(budget >= 0)) { $("envErr").textContent = "Enter the monthly limit as a number, like 1500."; return; }
     const roll = $("eRoll").checked;
+    const numbers = parseNums($("eNums").value);
+    const taken = numbers.find(n => db.envs.some(x => x !== editingEnv && (x.numbers || []).includes(n)));
+    if (taken) { $("envErr").textContent = `0${taken} is already set on another envelope.`; return; }
     if (editingEnv) {
-      const e = editingEnv; e.name = name; e.rollover = roll; e.example = false; e.budget = budget;
+      const e = editingEnv; e.name = name; e.rollover = roll; e.example = false; e.budget = budget; e.numbers = numbers;
       e.budgets = e.budgets || {}; Object.keys(e.budgets).forEach(k => { if (k > ui.month) delete e.budgets[k]; });
       if (ui.month < e.since) e.since = ui.month;
       e.budgets[ui.month] = budget;
-    } else db.envs.push({ id: uid(), name, budget, budgets: { [ui.month]: budget }, since: ui.month, rollover: roll, order: db.envs.length });
+    } else db.envs.push({ id: uid(), name, budget, budgets: { [ui.month]: budget }, since: ui.month, rollover: roll, order: db.envs.length, numbers });
     save(); hide(); render(); toast("Envelope saved");
   };
 
@@ -956,7 +963,11 @@
     if (d) out.date = `${d[1]}-${d[2]}-${d[3]}`;
     else if ((d = t.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/))) { const y = d[3].length === 2 ? "20" + d[3] : d[3]; out.date = `${y}-${d[2].padStart(2, "0")}-${d[1].padStart(2, "0")}`; }
     else if ((d = t.match(/TID:\s?PP(\d{2})(\d{2})(\d{2})/i))) out.date = `20${d[1]}-${d[2]}-${d[3]}`;
-    for (const [needle, envRe] of ENV_HINTS) { if (needle.test(t)) { const e = db.envs.find(x => envRe.test(x.name)); if (e) { out.env = e.id; break; } } }
+    // Envelope phone-number rules win over the keyword guesses below.
+    const nums = [...t.matchAll(/\+?\d[\d ]{8,15}\d/g)].map(m => last9(m[0])).filter(n => n.length === 9);
+    const byNum = nums.length && db.envs.find(e => (e.numbers || []).some(n => nums.includes(n)));
+    if (byNum) out.env = byNum.id;
+    else for (const [needle, envRe] of ENV_HINTS) { if (needle.test(t)) { const e = db.envs.find(x => envRe.test(x.name)); if (e) { out.env = e.id; break; } } }
     return out;
   }
   function applySms(){

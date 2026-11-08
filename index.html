@@ -14,8 +14,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<link rel="stylesheet" href="/styles.css?v=6">
-<link rel="stylesheet" href="/features.css?v=6">
+<link rel="stylesheet" href="/styles.css?v=7">
+<link rel="stylesheet" href="/features.css?v=7">
 <script>try{if(localStorage.getItem("ke-pin"))document.documentElement.classList.add("locked")}catch(e){}</script>
 </head>
 <body>
@@ -93,6 +93,7 @@
     <div class="env-summary" id="envSummary"></div>
     <label class="field"><span class="label">Name</span><input id="eName" placeholder="Groceries" autocomplete="off"></label>
     <label class="field"><span class="label" id="eAmtLbl">Monthly limit</span><span class="amount-field slim"><span class="cur">K</span><input id="eAmt" inputmode="decimal" placeholder="0.00" autocomplete="off"></span></label>
+    <label class="field"><span class="label">Phone numbers that go in this envelope</span><input id="eNums" inputmode="tel" placeholder="e.g. 0971120030, 0977000000" autocomplete="off"><small class="hint">Payments to or from these numbers are put here automatically when you paste an SMS.</small></label>
     <label class="switch-row" for="eRoll"><span><b>Roll over leftover money</b><small>Unspent money carries into next month. Overspending is taken off next month.</small></span><input type="checkbox" id="eRoll" class="switch"></label>
     <div class="env-tx" id="envTx"></div>
     <p class="err" id="envErr"></p>
@@ -217,6 +218,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="/app.js?v=6"></script>
+<script src="/app.js?v=7"></script>
 </body>
 </html>
