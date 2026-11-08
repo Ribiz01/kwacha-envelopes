@@ -79,7 +79,7 @@
     const t = (id, kind, amount, account, day, note, env, fee) => ({ id, kind, amount, account, date: `${m}-${pad(day)}`, month: m, note, env, created: day, example: true, ...(fee ? { fee } : {}) });
     const d = Math.min(new Date().getDate(), 28);
     return {
-      v: 2,
+      v: 3, adj: [],
       envs: [e("rent", "Rent", 450000, 0), e("groceries", "Groceries & food", 250000, 1), e("fuel", "Fuel & transport", 180000, 2),
         e("airtime", "Airtime & data", 50000, 3), e("zesco", "ZESCO electricity", 60000, 4), e("water", "Water", 25000, 5),
         e("family", "Family support", 100000, 6), e("fun", "Going out", 80000, 7), e("savings", "Savings", 200000, 8)],
@@ -102,7 +102,27 @@
     });
     d.bills.forEach(b => { if (!b.paid || typeof b.paid !== "object") b.paid = {}; });
     d.goals.forEach(g => { if (!Array.isArray(g.log)) g.log = []; });
-    d.v = 2;
+    d.adj = Array.isArray(d.adj) ? d.adj : [];
+    // v3: wallet balances are plain arithmetic (in − out − fees + corrections).
+    // Before v3 the latest SMS balance silently replaced the running total, so an
+    // expense could make a balance go up. Keep every wallet showing exactly what
+    // it showed before by adding a one-off correction for the difference.
+    if (!(d.v >= 3)) {
+      const order = (a, b) => a.date.localeCompare(b.date) || (a.created || 0) - (b.created || 0);
+      for (const a of ACCOUNTS) {
+        const list = d.txs.filter(t => t.account === a.id).sort(order);
+        let start = 0, old = 0;
+        for (let i = list.length - 1; i >= 0; i--) if (Number.isFinite(list[i].bal)) { start = i + 1; old = list[i].bal; break; }
+        for (const t of list.slice(start)) old += (t.kind === "in" ? t.amount : -t.amount) - (t.fee || 0);
+        const plain = list.reduce((s, t) => s + (t.kind === "in" ? t.amount : -t.amount) - (t.fee || 0), 0);
+        if (old !== plain) {
+          const last = list[list.length - 1];
+          d.adj.push({ id: "m" + a.id, account: a.id, date: last ? last.date : today(), created: (last && last.created || 0) + 0.5,
+            delta: old - plain, note: "Balance carried over from your SMS" });
+        }
+      }
+    }
+    d.v = 3;
     return d;
   }
   let db;
@@ -159,19 +179,34 @@
       envs, none: mi.env._none || 0, left: avail - spent };
   }
 
-  // Running balance per wallet: the latest SMS balance plus everything recorded after it.
+  // Wallet balance = income − spending − fees + balance corrections. Always plain
+  // arithmetic, so an expense can only ever take money off. SMS balances never
+  // overwrite it; a mismatch is shown as a check the user confirms (see smsCheck).
+  const txDelta = t => (t.kind === "in" ? t.amount : -t.amount) - fee(t);
+  const orderKey = (a, b) => a.date.localeCompare(b.date) || (a.created || 0) - (b.created || 0);
   function walletBalances(){
-    const order = (a, b) => a.date.localeCompare(b.date) || (a.created || 0) - (b.created || 0);
     const out = {};
     for (const a of ACCOUNTS) {
-      const list = db.txs.filter(t => t.account === a.id).sort(order);
-      let start = 0, bal = 0, anchor = null;
-      for (let i = list.length - 1; i >= 0; i--) if (Number.isFinite(list[i].bal)) { anchor = list[i]; start = i + 1; bal = anchor.bal; break; }
-      for (const t of list.slice(start)) bal += (t.kind === "in" ? t.amount : -t.amount) - fee(t);
-      out[a.id] = { bal, anchor, used: list.length > 0 };
+      const mine = db.txs.filter(t => t.account === a.id), adj = db.adj.filter(x => x.account === a.id);
+      const corr = adj.reduce((s, x) => s + x.delta, 0);
+      out[a.id] = { bal: mine.reduce((s, t) => s + txDelta(t), 0) + corr, corr, used: mine.length > 0 || adj.length > 0 };
     }
     out._total = ACCOUNTS.reduce((s, a) => s + out[a.id].bal, 0);
     return out;
+  }
+  /** Wallet balance straight after transaction t (entries and corrections up to it). */
+  function balanceAfter(t){
+    const upTo = x => orderKey(x, t) <= 0;
+    return db.txs.filter(x => x.account === t.account && (x.id === t.id || upTo(x))).reduce((s, x) => s + txDelta(x), 0)
+      + db.adj.filter(x => x.account === t.account && upTo(x)).reduce((s, x) => s + x.delta, 0);
+  }
+  /** The open SMS balance check, if the SMS balance disagrees with the entries. */
+  function smsCheck(){
+    const c = db.check; if (!c) return null;
+    const t = db.txs.find(x => x.id === c.tx);
+    if (!t || !Number.isFinite(t.bal)) { delete db.check; return null; }
+    const app = balanceAfter(t);
+    return app === t.bal ? null : { t, app, sms: t.bal, diff: t.bal - app };
   }
 
   // ---------- bills ----------
@@ -295,6 +330,8 @@
     else if (toAssign > 0) banner += `<div class="banner"><span class="dot"></span><span>${fmt(toAssign)} of your ${fmt(T.income, true)} income isn't in an envelope yet.</span><button data-act="envelopes">Assign</button></div>`;
     else if (toAssign < 0) banner += `<div class="banner bad"><span class="dot"></span><span>Limits total ${fmt(-toAssign)} more than the ${fmt(T.income, true)} you've received.</span><button data-act="envelopes">Review</button></div>`;
     const W = walletBalances();
+    const chk = smsCheck();
+    if (chk) banner = `<div class="banner bad"><span class="dot"></span><span>Your ${esc(acct(chk.t.account).short)} SMS says the balance is ${fmt(chk.sms)}, but your entries add up to ${fmt(chk.app)} (${chk.diff > 0 ? "+" : "−"}${fmt(Math.abs(chk.diff))}). Usually a payment wasn't recorded.</span><button data-act="matchsms">Match SMS</button><button data-act="keepmine">Keep mine</button></div>` + banner;
     const recent = [...T.tx].sort(byNewest).slice(0, 4);
     const due = db.bills.map(b => ({ b, st: billState(b, ui.month) })).filter(x => !x.st.paid && (!isNow || x.st.days <= 7)).sort((a, b) => a.st.due.localeCompare(b.st.due)).slice(0, 3);
     const goals = db.goals.slice(0, 2);
@@ -468,9 +505,9 @@
         <div class="card-h"><h2>Wallets</h2>${monthSwitch("mswitch light")}</div>
         ${rows.length ? rows.map(({ a, inn, out, w }) => `
           <div class="trow">${logo(a)}<div class="mid"><div class="t">${esc(a.name)}</div><div class="s">In ${fmt(inn, true)} · Out ${fmt(out, true)} this month</div></div>
-            <div class="r"><div class="a" style="${w.bal < 0 ? "color:var(--red)" : ""}">${priv(w.bal)}</div><div class="d">${w.anchor ? "SMS balance + later entries" : "From your entries"}</div></div></div>`).join("")
+            <div class="r"><div class="a" style="${w.bal < 0 ? "color:var(--red)" : ""}">${priv(w.bal)}</div><div class="d">${w.corr ? `incl. ${w.corr > 0 ? "+" : "−"}${fmt(Math.abs(w.corr), true)} correction` : "From your entries"}</div></div></div>`).join("")
           : `<div class="empty"><b>No wallet activity yet</b>Add income or paste an SMS and your balances show here.</div>`}
-        <p class="hint" style="margin-top:10px">Each wallet starts from the last SMS balance you pasted, then adds income and takes off spending and fees recorded after it.</p>
+        <p class="hint" style="margin-top:10px">Each wallet adds your income and takes off spending and fees. If a pasted SMS shows a different balance, you'll be asked whether to match it.</p>
       </div>`;
   }
 
@@ -561,7 +598,7 @@
   $("smsParse").onclick = applySms;
   $("txDel").onclick = () => {
     if (!armed($("txDel"))) return;
-    db.txs = db.txs.filter(t => t.id !== tx.editing.id); save(); hide(); render(); toast("Transaction deleted");
+    db.txs = db.txs.filter(t => t.id !== tx.editing.id); if (db.check && db.check.tx === tx.editing.id) delete db.check; save(); hide(); render(); toast("Transaction deleted");
   };
   $("txForm").onsubmit = e => {
     e.preventDefault();
@@ -575,6 +612,8 @@
     if (feeVal) rec.fee = feeVal; else delete rec.fee;
     if (Number.isFinite(tx.bal)) rec.bal = tx.bal; else delete rec.bal;
     if (tx.editing) db.txs = db.txs.map(t => t.id === rec.id ? rec : t); else db.txs.push(rec);
+    if (Number.isFinite(rec.bal) && balanceAfter(rec) !== rec.bal) db.check = { tx: rec.id };
+    else if (db.check && db.check.tx === rec.id) delete db.check;
     save(); hide(); ui.month = rec.month; render();
     toast(tx.editing ? "Saved" : (rec.kind === "in" ? "+" : "−") + fmt(rec.amount) + (feeVal ? ` (+${fmt(feeVal)} fee)` : "") + ` · ${acct(rec.account).short} balance ${fmt(walletBalances()[rec.account].bal)}`);
   };
@@ -717,7 +756,7 @@
     try {
       const d = JSON.parse(await f.text());
       if (!Array.isArray(d.envs) || !Array.isArray(d.txs)) throw new Error("shape");
-      db = migrate({ envs: d.envs, txs: d.txs, bills: d.bills, goals: d.goals }); save(); hide(); render(); toast(`Restored ${d.txs.length} transactions`);
+      db = migrate({ v: d.v, envs: d.envs, txs: d.txs, bills: d.bills, goals: d.goals, adj: d.adj }); save(); hide(); render(); toast(`Restored ${d.txs.length} transactions`);
     } catch (err) { $("setMsg").textContent = "That file isn't a Kwacha backup. Pick the .json file you saved from Back up data."; }
   };
   function clearExamples(){
@@ -728,7 +767,7 @@
   $("clearExBtn").onclick = () => { if (!clearArm) { clearArm = true; $("clearExBtn").querySelector("span").textContent = "Tap again to clear"; return; } clearExamples(); hide(); };
   $("resetBtn").onclick = () => {
     if (!resetArm) { resetArm = true; $("resetBtn").querySelector("span").textContent = "Tap again to erase everything"; return; }
-    db = { v: 2, envs: [], txs: [], bills: [], goals: [] }; save(); hide(); render(); toast("All data erased");
+    db = { v: 3, envs: [], txs: [], bills: [], goals: [], adj: [] }; save(); hide(); render(); toast("All data erased");
   };
 
   // ---------- bill reminders ----------
@@ -798,7 +837,7 @@
   $("lockCancel").onclick = () => { $("lock").hidden = true; drawSettings(); };
   $("lockForgot").onclick = () => {
     if (!lockS.forgot) { lockS.forgot = true; $("lockForgot").textContent = "Erase all data and reset"; lockMsg("Without the PIN, the only way in is to erase everything on this phone. Restore a backup afterwards if you have one.", true); return; }
-    db = { v: 2, envs: [], txs: [], bills: [], goals: [] }; save(); store.del("ke-pin"); store.del("ke-bio"); unlock(); render(); toast("Data erased and app lock removed");
+    db = { v: 3, envs: [], txs: [], bills: [], goals: [], adj: [] }; save(); store.del("ke-pin"); store.del("ke-bio"); unlock(); render(); toast("Data erased and app lock removed");
   };
   $("pinRow").onclick = () => showLock("set1");
   let pinOffArm = false;
@@ -848,6 +887,13 @@
       else if (a === "newbill") openBill(null);
       else if (a === "newgoal") openGoal(null);
       else if (a === "clearex") clearExamples();
+      else if (a === "matchsms") {
+        const c = smsCheck();
+        if (c) { db.adj.push({ id: uid(), account: c.t.account, date: c.t.date, created: (c.t.created || 0) + 0.5, delta: c.diff, note: "Matched to SMS balance" });
+          toast(`${acct(c.t.account).short} matched to the SMS balance of ${fmt(c.sms)}`); }
+        delete db.check; save(); render();
+      }
+      else if (a === "keepmine") { delete db.check; save(); render(); toast("Kept your entries"); }
       else if (a === "install") doInstall();
       else if (a === "copylink") copyLink();
       else if (a === "hideinstall") { installDismissed = true; store.set("ke-install-x", "1"); render(); }

@@ -1,6 +1,6 @@
 // Kwacha Envelopes service worker: always loads the newest app when online, falls back to the cached copy offline.
-const VERSION = "ke-v5";
-const SHELL = ["/", "/styles.css?v=5", "/features.css?v=5", "/app.js?v=5", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
+const VERSION = "ke-v6";
+const SHELL = ["/", "/styles.css?v=6", "/features.css?v=6", "/app.js?v=6", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
